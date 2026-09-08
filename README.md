@@ -9,7 +9,10 @@ this is my first linux supported app after being windows only for a while pretty
   (shuts down pc when download is complete on steam)
 - Better slider instead of in minutes only
 - github button
-- maybe an icon
+- an icon
+- save last used minutes
+- quick schedule
+- CLI intergration
 
 
   <img width="614" height="343" alt="image" src="https://github.com/user-attachments/assets/66bae1ee-451a-4155-81c4-953be1ae2c45" />
