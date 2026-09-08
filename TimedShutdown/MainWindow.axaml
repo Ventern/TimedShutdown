@@ -1,0 +1,91 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="TimedShutdown.MainWindow"
+        x:DataType="local:MainWindow"
+        xmlns:local="using:TimedShutdown"
+        Title="Timed Shutdown"
+        Width="600"
+        Height="300"
+        MinWidth="500"
+        MinHeight="250"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Styles>
+        <Style Selector="Button">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="Padding" Value="18,10"/>
+            <Setter Property="CornerRadius" Value="8"/>
+        </Style>
+
+        <Style Selector="TextBlock">
+            <Setter Property="FontSize" Value="15"/>
+        </Style>
+    </Window.Styles>
+
+    <Border Padding="30">
+        <Grid ColumnDefinitions="*,Auto"
+              RowDefinitions="Auto,*,Auto">
+            
+            <StackPanel Grid.ColumnSpan="2"
+                        Spacing="5"
+                        Margin="0,0,0,25">
+
+                <TextBlock Text="Timed Shutdown"
+                           FontSize="26"
+                           FontWeight="SemiBold"/>
+
+                <TextBlock Text="Choose when your computer should shut down."
+                           Opacity="0.6"
+                           FontSize="14"/>
+            </StackPanel>
+            
+            <StackPanel Grid.Row="1"
+                        Grid.Column="0"
+                        VerticalAlignment="Center"
+                        Spacing="12"
+                        Margin="0,0,35,0">
+
+                <TextBlock Text="Shutdown timer"
+                           FontWeight="SemiBold"/>
+
+                <TextBlock Text="{Binding ShutdownMinutes, StringFormat='{}{0} minutes'}"
+                           FontSize="22"/>
+
+                <Slider Minimum="5"
+                        Maximum="300"
+                        Value="{Binding ShutdownMinutes}"
+                        TickFrequency="5"
+                        IsSnapToTickEnabled="True"/>
+            </StackPanel>
+            
+            <StackPanel Grid.Row="1"
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Spacing="12">
+
+                <Button Content="Schedule Shutdown"
+                        Width="190"
+                        HorizontalContentAlignment="Center"
+                        Click="ScheduleShutdown_Click"/>
+
+                <Button Content="Cancel Shutdown"
+                        Width="190"
+                        HorizontalContentAlignment="Center"
+                        Click="CancelShutdown_Click"/>
+                
+                <CheckBox Content="3 Minute Warning"
+                          Width="190"
+                          HorizontalContentAlignment="Center"
+                          IsChecked="{Binding MinuteWarn}"/>
+            </StackPanel>
+            
+            <TextBlock Grid.Row="2"
+                       Grid.ColumnSpan="2"
+                       Text="{Binding StatusMessage}"
+                       Opacity="0.65"
+                       HorizontalAlignment="Left"
+                       Margin="0,20,0,0"/>
+
+        </Grid>
+    </Border>
+</Window>
