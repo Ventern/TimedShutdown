@@ -4,19 +4,24 @@ using System.Runtime.CompilerServices;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
-using Avalonia.Controls.Notifications;
 using System.Diagnostics;
+using System.IO;
 
 namespace TimedShutdown;
 
 public partial class MainWindow : Window, INotifyPropertyChanged
 {
     private int _shutdownMinutes = 5;
-    public static bool IsLinux = false;
-    private bool _3MinWarn = true;
+    private static bool _isLinux = false;
+    private static bool _3MinWarn = true;
     private string _statusMessage = "No shutdown scheduled.";
     private DispatcherTimer? _countdownTimer;
     private int _remainingSeconds;
+    private readonly string _settingsFile =
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "TimedShutdown",
+            "lastUsedMinutes.txt");
 
     public int ShutdownMinutes
     {
@@ -28,6 +33,31 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
             _shutdownMinutes = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(FormattedShutdownTime));
+            SaveMinutes();
+        }
+    }
+
+    public string FormattedShutdownTime
+    {
+        get
+        {
+            TimeSpan time = TimeSpan.FromMinutes(ShutdownMinutes);
+
+            if (time.TotalDays >= 1)
+            {
+                return $"{time.Days} day{(time.Days == 1 ? "" : "s")}, " +
+                       $"{time.Hours} hour{(time.Hours == 1 ? "" : "s")}, " +
+                       $"{time.Minutes} minute{(time.Minutes == 1 ? "" : "s")}";
+            }
+
+            if (time.TotalHours >= 1)
+            {
+                return $"{time.Hours} hour{(time.Hours == 1 ? "" : "s")}, " +
+                       $"{time.Minutes} minute{(time.Minutes == 1 ? "" : "s")}";
+            }
+
+            return $"{time.Minutes} minute{(time.Minutes == 1 ? "" : "s")}";
         }
     }
 
@@ -62,18 +92,19 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         InitializeComponent();
         if (OperatingSystem.IsWindows())
         {
-            IsLinux = false;
+            _isLinux = false;
         }
         else if (OperatingSystem.IsLinux())
         {
-            IsLinux = true;
+            _isLinux = true;
         }
+        LoadMinutes();
         DataContext = this;
     }
 
     private void ScheduleShutdown()
     {
-        if (!IsLinux)
+        if (!_isLinux)
         {
             int seconds = _shutdownMinutes * 60;
             Process.Start(new ProcessStartInfo
@@ -96,7 +127,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     
     private void CancelShutdown()
     {
-        if (!IsLinux)
+        if (!_isLinux)
         {
             Process.Start(new ProcessStartInfo
             {
@@ -121,7 +152,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         int minutes = ShutdownMinutes;
 
         _remainingSeconds = minutes * 60;
-        StatusMessage = $"Shutdown scheduled in {minutes}:00.";
+        StatusMessage = $"Shutdown scheduled in {FormatRemainingTime(_remainingSeconds)}";
         _countdownTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(1)
@@ -145,11 +176,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void CountdownTimer_Tick(object? sender, EventArgs e)
     {
         _remainingSeconds--;
-
-        int minutes = _remainingSeconds / 60;
-        int seconds = _remainingSeconds % 60;
-
-        StatusMessage = $"Shutdown scheduled in {minutes}:{seconds:D2}";
+        StatusMessage = $"Shutdown scheduled in {FormatRemainingTime(_remainingSeconds)}";
         if (_remainingSeconds <= 0)
         {
             _countdownTimer.Stop();
@@ -160,7 +187,54 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             NotificationService.Show("Timed Shutdown", "Your computer will shutdown automatically in 3 minutes unless canceled via terminal/app");
         }
     }
+    
+    private string FormatRemainingTime(int totalSeconds)
+    {
+        if (totalSeconds <= 0)
+            return "0 seconds";
 
+        TimeSpan time = TimeSpan.FromSeconds(totalSeconds);
+
+        if (time.TotalDays >= 1)
+        {
+            if (time.Hours == 0 && time.Minutes == 0)
+                return $"{time.Days} day{(time.Days == 1 ? "" : "s")}";
+
+            if (time.Minutes == 0)
+                return $"{time.Days} day{(time.Days == 1 ? "" : "s")} {time.Hours} hour{(time.Hours == 1 ? "" : "s")}";
+
+            return $"{time.Days} day{(time.Days == 1 ? "" : "s")} {time.Hours} hour{(time.Hours == 1 ? "" : "s")} {time.Minutes} minute{(time.Minutes == 1 ? "" : "s")}";
+        }
+
+        if (time.TotalHours >= 1)
+        {
+            if (time.Minutes == 0)
+                return $"{time.Hours} hour{(time.Hours == 1 ? "" : "s")}";
+
+            return $"{time.Hours} hour{(time.Hours == 1 ? "" : "s")} {time.Minutes} minute{(time.Minutes == 1 ? "" : "s")}";
+        }
+
+        if (time.TotalMinutes >= 1)
+            return $"{time.Minutes}:{time.Seconds:D2}";
+
+        return $"{time.Seconds} second{(time.Seconds == 1 ? "" : "s")}";
+    }
+
+    private void SaveMinutes()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(_settingsFile)!);
+        File.WriteAllText(_settingsFile, ShutdownMinutes.ToString());
+    }
+
+    private void LoadMinutes()
+    {
+        if (File.Exists(_settingsFile) &&
+            int.TryParse(File.ReadAllText(_settingsFile), out int minutes))
+        {
+            _shutdownMinutes = minutes;
+        }
+    }
+    
     public event PropertyChangedEventHandler? PropertyChanged;
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
@@ -171,7 +245,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         public static void Show(string title, string message)
         {
-            if (!MainWindow.IsLinux)
+            if (!MainWindow._isLinux)
             {
                 ShowWindows(title, message);
             }
